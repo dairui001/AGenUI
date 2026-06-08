@@ -100,9 +100,6 @@ private:
     /** Read a string style token from the ChoicePicker style config. */
     std::string getStyleString(const char* key, const std::string& fallbackValue) const;
 
-    /** Parse a color value that may be a FunctionCall token reference. */
-    static uint32_t parseColorWithToken(const nlohmann::json& colorValue, uint32_t fallbackValue);
-
     /** Shared option click callback. */
     static void onOptionClickCallback(ArkUI_NodeEvent* event);
 

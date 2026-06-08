@@ -5,7 +5,6 @@
 #include "../../measure/a2ui_platform_layout_bridge.h"
 #include "../../utils/a2ui_unit_utils.h"
 #include "../../utils/a2ui_font_weight_utils.h"
-#include "surface/token_parser/agenui_token_parser.h"
 #include <cstdlib>
 
 namespace a2ui {
@@ -422,27 +421,6 @@ void TabsComponent::updateTabStyles() {
         A2UINode(tabInfo.indicatorHandle).setVisibility(
             isSelected ? ARKUI_VISIBILITY_VISIBLE : ARKUI_VISIBILITY_HIDDEN);
     }
-}
-
-uint32_t TabsComponent::parseColorWithToken(const nlohmann::json& colorValue, uint32_t fallbackValue) {
-    if (colorValue.is_string()) {
-        return parseColor(colorValue.get<std::string>());
-    } else if (colorValue.is_object()) {
-        if (colorValue.contains("call") && colorValue["call"].is_string()) {
-            std::string callType = colorValue["call"].get<std::string>();
-            if (callType == "token" && colorValue.contains("args")) {
-                const auto& args = colorValue["args"];
-                if (args.contains("name") && args["name"].is_string()) {
-                    std::string tokenName = args["name"].get<std::string>();
-                    std::string resolvedColor = agenui::TokenParser::getInstance().resolve(tokenName);
-                    HM_LOGI("Resolved FunctionCall token '%s' to '%s'", tokenName.c_str(), resolvedColor.c_str());
-                    return parseColor(resolvedColor);
-                }
-            }
-        }
-    }
-    
-    return fallbackValue;
 }
 
 // ---- Child Mounts ----
