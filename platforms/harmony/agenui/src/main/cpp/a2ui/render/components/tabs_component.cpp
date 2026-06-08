@@ -5,6 +5,7 @@
 #include "../../measure/a2ui_platform_layout_bridge.h"
 #include "../../utils/a2ui_unit_utils.h"
 #include "../../utils/a2ui_font_weight_utils.h"
+#include "surface/token_parser/agenui_token_parser.h"
 #include <cstdlib>
 
 namespace a2ui {
@@ -142,6 +143,13 @@ void TabsComponent::onUpdateProperties(const nlohmann::json& properties) {
         buildTabBar(properties);
     }
 
+    // Extract styles from snapshot (set by core layer spec_config).
+    if (properties.contains("styles") && properties["styles"].is_object()) {
+        m_styleConfig = properties["styles"];
+        // Update tab styles immediately when styles change (e.g. on theme switch).
+        updateTabStyles();
+    }
+
     HM_LOGI( "id=%s, selectedIndex=%d",
                 m_id.c_str(), m_selectedIndex);
 }
@@ -151,7 +159,8 @@ void TabsComponent::onUpdateProperties(const nlohmann::json& properties) {
 TabsComponent::IndicatorStyle TabsComponent::resolveIndicatorStyle() {
     IndicatorStyle style;
     
-    const nlohmann::json tabsStyles = getComponentStylesFor("Tabs");
+    // Use m_styleConfig from snapshot (set by core layer spec_config).
+    const nlohmann::json& tabsStyles = m_styleConfig.is_object() ? m_styleConfig : getComponentStylesFor("Tabs");
     if (!tabsStyles.is_object()) {
         HM_LOGW("No Tabs styles found, using defaults");
         return style;
@@ -176,10 +185,10 @@ TabsComponent::IndicatorStyle TabsComponent::resolveIndicatorStyle() {
     };
     
     auto parseColorStyle = [this, &tabsStyles](const char* key, uint32_t& outValue) {
-        if (!tabsStyles.contains(key) || !tabsStyles[key].is_string()) {
+        if (!tabsStyles.contains(key)) {
             return;
         }
-        outValue = parseColor(tabsStyles[key].get<std::string>());
+        outValue = parseColorWithToken(tabsStyles[key], outValue);
     };
     
     parseFloatStyle("indicator-width", style.width);
@@ -369,13 +378,14 @@ void TabsComponent::updateTabStyles() {
     bool     fontWeightBold         = false;
     bool     fontWeightSelectedBold = true;
 
-    const nlohmann::json tabsStyles = getComponentStylesFor("Tabs");
+    // Use m_styleConfig from snapshot (set by core layer spec_config).
+    const nlohmann::json& tabsStyles = m_styleConfig.is_object() ? m_styleConfig : getComponentStylesFor("Tabs");
     if (tabsStyles.is_object()) {
-        if (tabsStyles.contains("tab-font-color") && tabsStyles["tab-font-color"].is_string()) {
-            fontColor = parseColor(tabsStyles["tab-font-color"].get<std::string>());
+        if (tabsStyles.contains("tab-font-color")) {
+            fontColor = parseColorWithToken(tabsStyles["tab-font-color"], fontColor);
         }
-        if (tabsStyles.contains("tab-font-color-selected") && tabsStyles["tab-font-color-selected"].is_string()) {
-            fontColorSelected = parseColor(tabsStyles["tab-font-color-selected"].get<std::string>());
+        if (tabsStyles.contains("tab-font-color-selected")) {
+            fontColorSelected = parseColorWithToken(tabsStyles["tab-font-color-selected"], fontColorSelected);
         }
 
         auto readFontSize = [&tabsStyles](const char* key, float& out) {
@@ -412,6 +422,27 @@ void TabsComponent::updateTabStyles() {
         A2UINode(tabInfo.indicatorHandle).setVisibility(
             isSelected ? ARKUI_VISIBILITY_VISIBLE : ARKUI_VISIBILITY_HIDDEN);
     }
+}
+
+uint32_t TabsComponent::parseColorWithToken(const nlohmann::json& colorValue, uint32_t fallbackValue) {
+    if (colorValue.is_string()) {
+        return parseColor(colorValue.get<std::string>());
+    } else if (colorValue.is_object()) {
+        if (colorValue.contains("call") && colorValue["call"].is_string()) {
+            std::string callType = colorValue["call"].get<std::string>();
+            if (callType == "token" && colorValue.contains("args")) {
+                const auto& args = colorValue["args"];
+                if (args.contains("name") && args["name"].is_string()) {
+                    std::string tokenName = args["name"].get<std::string>();
+                    std::string resolvedColor = agenui::TokenParser::getInstance().resolve(tokenName);
+                    HM_LOGI("Resolved FunctionCall token '%s' to '%s'", tokenName.c_str(), resolvedColor.c_str());
+                    return parseColor(resolvedColor);
+                }
+            }
+        }
+    }
+    
+    return fallbackValue;
 }
 
 // ---- Child Mounts ----

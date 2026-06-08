@@ -86,8 +86,12 @@ private:
     /** Tab click event callback. */
     static void onTabClickEvent(ArkUI_NodeEvent* event);
 
+    /** Parse a color value that may be a FunctionCall token reference. */
+    static uint32_t parseColorWithToken(const nlohmann::json& colorValue, uint32_t fallbackValue);
+
     ArkUI_NodeHandle m_tabBarHandle;              // Tab bar row
     ArkUI_NodeHandle m_contentContainerHandle;    // Content container column
+    nlohmann::json m_styleConfig;                 // Style config from snapshot
     std::vector<TabInfo> m_tabInfos;              // Tab metadata
     int m_selectedIndex;                          // Current selected index
     bool m_contentShown;                          // Whether content has been shown
