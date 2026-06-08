@@ -129,7 +129,7 @@ static const char* const kBaseComponentSpecConfig = R"JSON({
       "styles": {
         "default": {
           "font-size": "32px",
-          "color": "#000000"
+          "text-color": {"call": "token", "args": {"name": "Color_Black"}}
         }
       }
     },
